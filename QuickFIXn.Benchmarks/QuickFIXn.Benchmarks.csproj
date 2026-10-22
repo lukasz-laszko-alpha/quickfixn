@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" Version="0.14.0" />
+    <ProjectReference Include="../QuickFIXn/QuickFix.csproj" />
+    <EmbeddedResource Include="../spec/fix/FIX44.xml" LogicalName="QuickFIXn.Benchmarks.FIX44.xml" />
+  </ItemGroup>
+</Project>
