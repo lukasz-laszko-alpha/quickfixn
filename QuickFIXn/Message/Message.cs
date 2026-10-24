@@ -576,6 +576,7 @@ public class Message : FieldMap
         int grpEntryDelimiterTag = groupSpec.Delim;
         int grpPos = pos;
         Group? grp = null; // the group entry being constructed
+        bool grpIsOwned = false;
 
         while (pos < msgstr.Length)
         {
@@ -588,19 +589,20 @@ public class Message : FieldMap
                 if (grp is not null)
                 {
                     // We were already building an entry, so the delimiter means it's done.
-                    fieldMap.AddGroup(grp, false);
+                    fieldMap.AddGroup(grp, false, grpIsOwned);
                 }
 
                 // Create a new group!
-                grp = msgFactory?.Create(ExtractBeginString(msgstr), GetMsgType(msgstr), grpNoFld.Tag)
-                    ?? new Group(grpNoFld.Tag, grpEntryDelimiterTag);
+                grp = msgFactory?.Create(ExtractBeginString(msgstr), GetMsgType(msgstr), grpNoFld.Tag);
+                grpIsOwned = grp is null;
+                grp ??= new Group(grpNoFld.Tag, grpEntryDelimiterTag);
             }
             else if (!groupSpec.IsField(f.Tag))
             {
                 // This field is not in the group, thus the repeating group is done.
                 if (grp is not null)
                 {
-                    fieldMap.AddGroup(grp, false);
+                    fieldMap.AddGroup(grp, false, grpIsOwned);
                 }
                 return grpPos;
             }
@@ -628,7 +630,7 @@ public class Message : FieldMap
             // rare situation: if message ends on an in-group field (which means it lacks a checksum),
             //   then this logic is needed here to actually write the group (because this loop won't run again)
             if (pos == msgstr.Length) {
-                fieldMap.AddGroup(grp, false);
+                fieldMap.AddGroup(grp, false, grpIsOwned);
                 return pos;
             }
         }

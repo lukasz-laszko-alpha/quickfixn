@@ -161,6 +161,14 @@ public class MessageTests
         msg.GetGroup(2, partyGroup);
 
         Assert.That(partyGroup.IsSetNoPartySubIDs(), Is.False);
+
+        string wrongCounterMsg = msgStr
+            .Replace("453=6" + Message.SOH, "453=7" + Message.SOH)
+            .Replace("10=152" + Message.SOH, "10=153" + Message.SOH);
+        Message wrongCounterMessage = new();
+        wrongCounterMessage.FromString(wrongCounterMsg, false, dd, dd);
+        Assert.That(wrongCounterMessage.GetInt(Tags.NoPartyIDs), Is.EqualTo(7));
+        Assert.That(wrongCounterMessage.GroupCount(Tags.NoPartyIDs), Is.EqualTo(6));
     }
 
     [Test]
@@ -180,6 +188,21 @@ public class MessageTests
         n.FromString(s, true, dd, dd, _defaultMsgFactory);
         Assert.That(n.NoTradingSessions.ToStringField(), Is.EqualTo("386=3"));
         Assert.That(n.ConstructString(), Does.Contain("386=3")); //should not be "corrected" to 2!
+    }
+
+    [Test]
+    public void FromString_ReusedFactoryGroupIsCopied()
+    {
+        QuickFix.DataDictionary.DataDictionary dd = new();
+        dd.LoadFIXSpec("FIX42");
+
+        string messageString = ("8=FIX.4.2|9=91|35=B|34=2|49=TW|52=20111011-15:06:23.103|56=ISLD|"
+                               + "148=headline|33=2|58=line1|58=line2|10=193|").Replace('|', Message.SOH);
+        Message message = new();
+        message.FromString(messageString, false, dd, dd, new ReusingGroupFactory());
+
+        Assert.That(message.GetGroup(1, Tags.LinesOfText).GetString(Tags.Text), Is.EqualTo("line1"));
+        Assert.That(message.GetGroup(2, Tags.LinesOfText).GetString(Tags.Text), Is.EqualTo("line2"));
     }
 
     [Test]
@@ -1125,5 +1148,25 @@ public class MessageTests
         Assert.That(n.ToString().Replace(Message.SOH, '|'), Is.EqualTo(
             "8=FIX.4.2|9=91|35=B|34=2|49=TW|52=20111011-15:06:23.103|56=ISLD|148=headline|33=1|58=line1|354=3|355=uno|"
         ));
+    }
+
+    private sealed class ReusingGroupFactory : IMessageFactory
+    {
+        private readonly Group _group = new(Tags.LinesOfText, Tags.Text);
+
+        public ICollection<string> GetSupportedBeginStrings() => ["FIX.4.2"];
+
+        public Message Create(string beginString, string msgType) => new();
+
+        public Message Create(string beginString, ApplVerID applVerId, string msgType) => new();
+
+        public Group? Create(string beginString, string msgType, int groupCounterTag)
+        {
+            if (groupCounterTag != Tags.LinesOfText)
+                return null;
+
+            _group.Clear();
+            return _group;
+        }
     }
 }

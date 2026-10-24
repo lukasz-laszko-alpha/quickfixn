@@ -258,8 +258,13 @@ public class FieldMap : IEnumerable<KeyValuePair<int, IField>> {
     /// <param name="autoIncCounter">if true, auto-increment the counter, else leave it as-is</param>
     internal void AddGroup(Group grp, bool autoIncCounter)
     {
-        // copy, in case user code reuses input object
-        Group group = grp.Clone();
+        AddGroup(grp, autoIncCounter, takeOwnership: false);
+    }
+
+    internal void AddGroup(Group grp, bool autoIncCounter, bool takeOwnership)
+    {
+        // Copy groups that may be reused; parser-owned groups can be retained directly.
+        Group group = takeOwnership ? grp : grp.Clone();
 
         if (_groups.TryGetValue(group.CounterField, out var groupList))
         {
